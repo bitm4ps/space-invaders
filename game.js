@@ -796,29 +796,37 @@ function onLongPress() {
   else if (state === STATE.PAUSED) state = STATE.GAME;
 }
 
-if (isR1) {
-  document.addEventListener('scrollUp',      onScrollUp);
-  document.addEventListener('scrollDown',    onScrollDown);
-  document.addEventListener('sideClick',     onPTT);
-  document.addEventListener('longPressStart',onLongPress);
-} else {
-  // keyboard fallback for browser preview
-  const keys = {};
-  document.addEventListener('keydown', e => {
-    if (e.key === 'ArrowLeft')  onScrollUp();
-    if (e.key === 'ArrowRight') onScrollDown();
-    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onPTT(); }
-    if (e.key === 'p' || e.key === 'Escape') onLongPress();
-  });
+// R1 events — listen on both window and document to cover all SDK versions
+['scrollUp','scrollDown','sideClick','longPressStart'].forEach(evt => {
+  const handler = evt === 'scrollUp' ? onScrollUp
+    : evt === 'scrollDown' ? onScrollDown
+    : evt === 'sideClick'  ? onPTT
+    : onLongPress;
+  window.addEventListener(evt, handler);
+  document.addEventListener(evt, handler);
+});
 
-  // mobile touch
-  let touchStartX = 0;
-  document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
-  document.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    if (Math.abs(dx) > 20) { dx < 0 ? onScrollUp() : onScrollDown(); }
-    else onPTT();
-  });
-}
+// keyboard fallback for browser preview
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft')  onScrollUp();
+  if (e.key === 'ArrowRight') onScrollDown();
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onPTT(); }
+  if (e.key === 'p' || e.key === 'Escape') onLongPress();
+});
+
+// scroll wheel fallback
+window.addEventListener('wheel', e => {
+  e.preventDefault();
+  e.deltaY < 0 ? onScrollUp() : onScrollDown();
+}, { passive: false });
+
+// mobile touch fallback
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 20) { dx < 0 ? onScrollUp() : onScrollDown(); }
+  else onPTT();
+});
 
 })();
