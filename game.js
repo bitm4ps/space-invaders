@@ -178,10 +178,13 @@ function drawStars() {
 const STATE = { MENU:0, GAME:1, PAUSED:2, GAMEOVER:3, LEVELUP:4 };
 
 const DIFFICULTIES = [
-  { name:'EASY',   invSpd:0.3, fireRate:0.004, bulletSpd:1.4, scrollSpd:4 },
-  { name:'NORMAL', invSpd:0.5, fireRate:0.007, bulletSpd:2.0, scrollSpd:5 },
-  { name:'HARD',   invSpd:0.9, fireRate:0.012, bulletSpd:2.8, scrollSpd:6 },
+  { name:'EASY',   invSpd:0.3, fireRate:0.004, bulletSpd:1.4, scrollSpd:10 },
+  { name:'NORMAL', invSpd:0.5, fireRate:0.007, bulletSpd:2.0, scrollSpd:14 },
+  { name:'HARD',   invSpd:0.9, fireRate:0.012, bulletSpd:2.8, scrollSpd:18 },
 ];
+
+const SPEED_OPTIONS = [6, 10, 14, 18, 24, 30];
+let speedIdx = 2; // default 14
 
 let state     = STATE.MENU;
 let diffIdx   = 1;
@@ -259,7 +262,7 @@ function initGame() {
   score = 0;
   lives = 3;
   level = 1;
-  scrollSpd = diff.scrollSpd;
+  scrollSpd = SPEED_OPTIONS[speedIdx];
   playerX = W / 2 - PLAYER_W / 2;
   playerExploding = false;
   playerBullets = [];
@@ -594,20 +597,28 @@ function drawMenu() {
   // speed display
   cx.font = '6px "Press Start 2P"';
   cx.fillStyle = 'rgba(255,255,255,.3)';
-  cx.fillText('SCROLL SPD  ' + DIFFICULTIES[diffIdx].scrollSpd, W/2, 178);
+  // speed selector
+  cx.font = '7px "Press Start 2P"';
+  cx.fillStyle = 'rgba(255,255,255,.4)';
+  cx.fillText('MOVE SPEED', W/2, 178);
+  cx.font = '9px "Press Start 2P"';
+  cx.fillStyle = '#ffdd00';
+  cx.shadowColor = '#ffdd00'; cx.shadowBlur = 8;
+  cx.fillText('< ' + SPEED_OPTIONS[speedIdx] + ' >', W/2, 196);
+  cx.shadowBlur = 0;
 
   // blink "press PTT"
   if (Math.floor(menuBlink / 30) % 2 === 0) {
     cx.font = '7px "Press Start 2P"';
     cx.fillStyle = '#fff';
-    cx.fillText('PTT TO START', W/2, 210);
+    cx.fillText('PTT TO START', W/2, 220);
   }
 
   // controls hint
   cx.font = '5px "Press Start 2P"';
   cx.fillStyle = 'rgba(255,255,255,.2)';
-  cx.fillText('\u2191\u2193 CHANGE DIFF', W/2, 232);
-  cx.fillText('SCROLL = MOVE  AUTO FIRE', W/2, 246);
+  cx.fillText('\u2191\u2193 DIFF   HOLD = SPEED', W/2, 240);
+  cx.fillText('SCROLL = MOVE  AUTO FIRE', W/2, 252);
 
   // tag
   cx.font = '6px "Press Start 2P"';
@@ -792,8 +803,14 @@ function onPTT() {
 }
 
 function onLongPress() {
-  if (state === STATE.GAME) state = STATE.PAUSED;
-  else if (state === STATE.PAUSED) state = STATE.GAME;
+  if (state === STATE.MENU) {
+    speedIdx = (speedIdx + 1) % SPEED_OPTIONS.length;
+    scrollSpd = SPEED_OPTIONS[speedIdx];
+  } else if (state === STATE.GAME) {
+    state = STATE.PAUSED;
+  } else if (state === STATE.PAUSED) {
+    state = STATE.GAME;
+  }
 }
 
 // R1 hardware events — registered inside DOMContentLoaded matching official SDK pattern
