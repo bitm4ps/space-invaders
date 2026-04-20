@@ -178,13 +178,25 @@ function drawStars() {
 const STATE = { MENU:0, GAME:1, PAUSED:2, GAMEOVER:3, LEVELUP:4 };
 
 const DIFFICULTIES = [
-  { name:'EASY',   invSpd:0.3, fireRate:0.004, bulletSpd:1.4, scrollSpd:10 },
-  { name:'NORMAL', invSpd:0.5, fireRate:0.007, bulletSpd:2.0, scrollSpd:14 },
-  { name:'HARD',   invSpd:0.9, fireRate:0.012, bulletSpd:2.8, scrollSpd:18 },
+  { name:'EASY',   invSpd:0.3, fireRate:0.004, bulletSpd:1.4 },
+  { name:'NORMAL', invSpd:0.5, fireRate:0.007, bulletSpd:2.0 },
+  { name:'HARD',   invSpd:0.9, fireRate:0.012, bulletSpd:2.8 },
 ];
 
-const SPEED_OPTIONS = [6, 10, 14, 18, 24, 30];
-let speedIdx = 2; // default 14
+// Velocity-based scroll: fast spin = full speed, light tap = reduced
+const SCROLL_MAX_SPD = 24;  // px per event when scrolling fast
+const SCROLL_MIN_SPD = 4;   // px per event on a single light tap
+const SCROLL_FAST_MS = 80;  // events closer than this = full speed
+const SCROLL_SLOW_MS = 350; // events farther apart than this = min speed
+let lastScrollTime = 0;
+
+function scrollMove() {
+  const now = Date.now();
+  const dt = now - lastScrollTime;
+  lastScrollTime = now;
+  const t = Math.max(0, Math.min(1, (SCROLL_SLOW_MS - dt) / (SCROLL_SLOW_MS - SCROLL_FAST_MS)));
+  return Math.round(SCROLL_MIN_SPD + t * (SCROLL_MAX_SPD - SCROLL_MIN_SPD));
+}
 
 let state     = STATE.MENU;
 let diffIdx   = 1;
@@ -262,7 +274,6 @@ function initGame() {
   score = 0;
   lives = 3;
   level = 1;
-  scrollSpd = SPEED_OPTIONS[speedIdx];
   playerX = W / 2 - PLAYER_W / 2;
   playerExploding = false;
   playerBullets = [];
@@ -597,28 +608,18 @@ function drawMenu() {
   // speed display
   cx.font = '6px "Press Start 2P"';
   cx.fillStyle = 'rgba(255,255,255,.3)';
-  // speed selector
-  cx.font = '7px "Press Start 2P"';
-  cx.fillStyle = 'rgba(255,255,255,.4)';
-  cx.fillText('MOVE SPEED', W/2, 178);
-  cx.font = '9px "Press Start 2P"';
-  cx.fillStyle = '#ffdd00';
-  cx.shadowColor = '#ffdd00'; cx.shadowBlur = 8;
-  cx.fillText('< ' + SPEED_OPTIONS[speedIdx] + ' >', W/2, 196);
-  cx.shadowBlur = 0;
-
   // blink "press PTT"
   if (Math.floor(menuBlink / 30) % 2 === 0) {
     cx.font = '7px "Press Start 2P"';
     cx.fillStyle = '#fff';
-    cx.fillText('PTT TO START', W/2, 220);
+    cx.fillText('PTT TO START', W/2, 196);
   }
 
   // controls hint
   cx.font = '5px "Press Start 2P"';
   cx.fillStyle = 'rgba(255,255,255,.2)';
-  cx.fillText('\u2191\u2193 DIFF   HOLD = SPEED', W/2, 240);
-  cx.fillText('SCROLL = MOVE  AUTO FIRE', W/2, 252);
+  cx.fillText('\u2191\u2193 CHANGE DIFF', W/2, 220);
+  cx.fillText('SCROLL = MOVE  AUTO FIRE', W/2, 234);
 
   // tag
   cx.font = '6px "Press Start 2P"';
@@ -775,22 +776,20 @@ const isR1 = typeof PluginMessageHandler !== 'undefined';
 function onScrollUp() {
   if (state === STATE.MENU) {
     diffIdx = (diffIdx + 2) % 3;  // scroll up = prev difficulty
-    scrollSpd = DIFFICULTIES[diffIdx].scrollSpd;
     return;
   }
   if (state === STATE.GAME && !playerExploding) {
-    playerX = Math.max(0, playerX - scrollSpd);
+    playerX = Math.max(0, playerX - scrollMove());
   }
 }
 
 function onScrollDown() {
   if (state === STATE.MENU) {
-    diffIdx = (diffIdx + 1) % 3;  // scroll down = next difficulty
-    scrollSpd = DIFFICULTIES[diffIdx].scrollSpd;
+    diffIdx = (diffIdx + 1) % 3;
     return;
   }
   if (state === STATE.GAME && !playerExploding) {
-    playerX = Math.min(W - PLAYER_W, playerX + scrollSpd);
+    playerX = Math.min(W - PLAYER_W, playerX + scrollMove());
   }
 }
 
@@ -803,14 +802,8 @@ function onPTT() {
 }
 
 function onLongPress() {
-  if (state === STATE.MENU) {
-    speedIdx = (speedIdx + 1) % SPEED_OPTIONS.length;
-    scrollSpd = SPEED_OPTIONS[speedIdx];
-  } else if (state === STATE.GAME) {
-    state = STATE.PAUSED;
-  } else if (state === STATE.PAUSED) {
-    state = STATE.GAME;
-  }
+  if (state === STATE.GAME) state = STATE.PAUSED;
+  else if (state === STATE.PAUSED) state = STATE.GAME;
 }
 
 // R1 hardware events — registered inside DOMContentLoaded matching official SDK pattern
