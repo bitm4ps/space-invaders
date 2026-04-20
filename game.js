@@ -796,15 +796,24 @@ function onLongPress() {
   else if (state === STATE.PAUSED) state = STATE.GAME;
 }
 
-// R1 events — listen on both window and document to cover all SDK versions
-['scrollUp','scrollDown','sideClick','longPressStart'].forEach(evt => {
-  const handler = evt === 'scrollUp' ? onScrollUp
-    : evt === 'scrollDown' ? onScrollDown
-    : evt === 'sideClick'  ? onPTT
-    : onLongPress;
-  window.addEventListener(evt, handler);
-  document.addEventListener(evt, handler);
+// R1 hardware events — registered inside DOMContentLoaded matching official SDK pattern
+document.addEventListener('DOMContentLoaded', () => {
+  window.addEventListener('scrollUp',       onScrollUp);
+  window.addEventListener('scrollDown',     onScrollDown);
+  window.addEventListener('sideClick',      onPTT);
+  window.addEventListener('longPressStart', onLongPress);
+  window.addEventListener('longPressEnd',   onLongPress);
 });
+
+// Required for R1 to activate event dispatching (from SDK: window.onPluginMessage must exist)
+window.onPluginMessage = function(data) {
+  if (!data) return;
+  const t = data.type || data;
+  if (t === 'scrollUp')       onScrollUp();
+  else if (t === 'scrollDown')    onScrollDown();
+  else if (t === 'sideClick')     onPTT();
+  else if (t === 'longPressStart' || t === 'longPressEnd') onLongPress();
+};
 
 // keyboard fallback for browser preview
 document.addEventListener('keydown', e => {
@@ -814,7 +823,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'p' || e.key === 'Escape') onLongPress();
 });
 
-// scroll wheel fallback
+// mouse scroll wheel fallback
 window.addEventListener('wheel', e => {
   e.preventDefault();
   e.deltaY < 0 ? onScrollUp() : onScrollDown();
